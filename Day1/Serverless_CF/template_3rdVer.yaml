@@ -1,0 +1,212 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Multi-language Support API Stack'
+
+Resources:
+  # DynamoDB Table
+  LanguageTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: LanguageContent
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: message_id
+          AttributeType: S
+        - AttributeName: language
+          AttributeType: S
+      KeySchema:
+        - AttributeName: message_id
+          KeyType: HASH
+        - AttributeName: language
+          KeyType: RANGE
+
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                Resource: !GetAtt LanguageTable.Arn
+
+  # Lambda Function
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-function'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          from botocore.exceptions import ClientError
+          import logging
+
+          # Setup logging
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              # Log the incoming event
+              logger.info('Event: %s', json.dumps(event))
+              
+              try:
+                  # Initialize DynamoDB
+                  dynamodb = boto3.resource('dynamodb')
+                  table = dynamodb.Table('LanguageContent')
+                  
+                  # Log table name
+                  logger.info('Table name: %s', table.table_name)
+                  
+                  # Get query parameters
+                  params = event.get('queryStringParameters', {}) or {}
+                  message_id = params.get('message_id', 'welcome')
+                  language = params.get('language', 'en')
+                  
+                  # Log parameters
+                  logger.info('Parameters: message_id=%s, language=%s', message_id, language)
+                  
+                  if language not in ['en', 'ja', 'zh']:
+                      return {
+                          'statusCode': 400,
+                          'headers': {
+                              'Content-Type': 'application/json',
+                              'Access-Control-Allow-Origin': '*'
+                          },
+                          'body': json.dumps({
+                              'error': f'Unsupported language: {language}'
+                          })
+                      }
+                  
+                  # Try to get item from DynamoDB
+                  try:
+                      response = table.get_item(
+                          Key={
+                              'message_id': message_id,
+                              'language': language
+                          }
+                      )
+                      logger.info('DynamoDB Response: %s', json.dumps(response))
+                      
+                      message = response.get('Item', {}).get('content', 'Message not found')
+                      
+                      return {
+                          'statusCode': 200,
+                          'headers': {
+                              'Content-Type': 'application/json',
+                              'Access-Control-Allow-Origin': '*'
+                          },
+                          'body': json.dumps({
+                              'message': message,
+                              'language': language
+                          })
+                      }
+                      
+                  except ClientError as e:
+                      logger.error('DynamoDB Error: %s', str(e))
+                      return {
+                          'statusCode': 500,
+                          'headers': {
+                              'Content-Type': 'application/json',
+                              'Access-Control-Allow-Origin': '*'
+                          },
+                          'body': json.dumps({
+                              'error': 'Database error',
+                              'details': str(e)
+                          })
+                      }
+                      
+              except Exception as e:
+                  logger.error('General Error: %s', str(e))
+                  return {
+                      'statusCode': 500,
+                      'headers': {
+                          'Content-Type': 'application/json',
+                          'Access-Control-Allow-Origin': '*'
+                      },
+                      'body': json.dumps({
+                          'error': 'Internal server error',
+                          'details': str(e)
+                      })
+                  }
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 10
+      MemorySize: 128
+
+  # Lambda Permission for API Gateway
+  LambdaApiPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'apigateway.amazonaws.com'
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*/*'
+
+  # API Gateway
+  Api:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Name: !Sub '${AWS::StackName}-api'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  ApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      ParentId: !GetAtt Api.RootResourceId
+      PathPart: 'message'
+      RestApiId: !Ref Api
+
+  ApiMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref ApiResource
+      RestApiId: !Ref Api
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations
+          - lambdaArn: !GetAtt LambdaFunction.Arn
+
+  ApiDeployment:
+    Type: 'AWS::ApiGateway::Deployment'
+    DependsOn: ApiMethod
+    Properties:
+      RestApiId: !Ref Api
+
+  ApiStage:
+    Type: 'AWS::ApiGateway::Stage'
+    Properties:
+      DeploymentId: !Ref ApiDeployment
+      RestApiId: !Ref Api
+      StageName: prod
+
+Outputs:
+  ApiEndpoint:
+    Description: 'API Endpoint'
+    Value: !Sub 'https://${Api}.execute-api.${AWS::Region}.amazonaws.com/prod/message'
+  TableName:
+    Description: 'DynamoDB Table Name'
+    Value: !Ref LanguageTable
+  LambdaFunction:
+    Description: 'Lambda Function Name'
+    Value: !Ref LambdaFunction
