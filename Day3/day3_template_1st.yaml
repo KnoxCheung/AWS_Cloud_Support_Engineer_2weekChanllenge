@@ -2,6 +2,10 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Day 3 - Container Orchestration and CI/CD Pipeline'
 
 Parameters:
+  GithubOwner:
+    Type: String
+    Description: GitHub owner name
+    Default: KnoxCheung
   EnvironmentName:
     Type: String
     Default: container-demo
