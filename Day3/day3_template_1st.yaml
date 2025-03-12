@@ -5,7 +5,7 @@ Parameters:
   GithubOwner:
     Type: String
     Description: GitHub owner name
-    Default: KnoxCheung
+    Default: [Your GitHub username]
   EnvironmentName:
     Type: String
     Default: container-demo
