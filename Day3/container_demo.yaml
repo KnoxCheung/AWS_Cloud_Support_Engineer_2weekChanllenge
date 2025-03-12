@@ -1,0 +1,17 @@
+Stack name: container-demo
+
+Parameters:
+  EnvironmentName: container-demo
+  ContainerPort: 80
+  
+  # GitHub Configuration
+  GithubRepo: [Your repository name]
+  GithubBranch: main
+  GithubToken: [Your GitHub token from Step 2]
+
+  # Network Configuration (leave as default)
+  VpcCIDR: 10.0.0.0/16
+  PublicSubnet1CIDR: 10.0.1.0/24
+  PublicSubnet2CIDR: 10.0.2.0/24
+  PrivateSubnet1CIDR: 10.0.3.0/24
+  PrivateSubnet2CIDR: 10.0.4.0/24
