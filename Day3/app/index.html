@@ -2,9 +2,40 @@
 <html>
 <head>
     <title>Day 3 Challenge</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+    </style>
 </head>
 <body>
-    <h1>Hello from Container Demo!</h1>
-    <p>This is Day 3 of AWS Cloud Support Engineer Challenge</p>
+    <div class="container">
+        <h1>14 Days AWS Challenge - Day 3</h1>
+        <p>Successfully deployed containerized application using ECS Fargate!</p>
+        <p>Container ID: <span id="container-id">Loading...</span></p>
+        <p>Timestamp: <span id="timestamp"></span></p>
+    </div>
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toISOString();
+        fetch('/health.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('container-id').textContent = data.trim();
+            });
+    </script>
 </body>
 </html>
