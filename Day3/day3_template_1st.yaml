@@ -5,16 +5,16 @@ Parameters:
   GitHubOwner:
     Type: String
     Description: GitHub repository owner
-
+  
   GitHubRepo:
     Type: String
     Description: GitHub repository name
-
+  
   GitHubBranch:
     Type: String
     Default: main
     Description: GitHub repository branch
-
+  
   GitHubToken:
     Type: String
     NoEcho: true
@@ -291,9 +291,6 @@ Resources:
             Principal:
               Service: codebuild.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonECR-FullAccess
-        - arn:aws:iam::aws:policy/AmazonECS-FullAccess
 
   CodeBuildServicePolicy:
     Type: AWS::IAM::Policy
@@ -320,10 +317,19 @@ Resources:
               - ecr:UploadLayerPart
               - ecr:CompleteLayerUpload
               - ecr:PutImage
+              - ecr:DescribeRepositories
+              - ecr:ListImages
+              - ecr:BatchDeleteImage
             Resource: '*'
           - Effect: Allow
             Action:
               - ecs:UpdateService
+              - ecs:DescribeServices
+              - ecs:DescribeTaskDefinition
+              - ecs:RegisterTaskDefinition
+              - ecs:ListTaskDefinitions
+              - ecs:DescribeClusters
+              - ecs:ListClusters
             Resource: '*'
 
   CodeBuildProject:
@@ -351,7 +357,7 @@ Resources:
             Value: !Ref ECSService
       Source:
         Type: GITHUB
-        Location: !Sub <https://github.com/${GitHubOwner}/${GitHubRepo}.git>
+        Location: !Sub https://github.com/${GitHubOwner}/${GitHubRepo}.git
         BuildSpec: Day3/buildspec.yml
         GitCloneDepth: 1
       Triggers:
@@ -365,16 +371,16 @@ Resources:
 Outputs:
   ApplicationURL:
     Description: URL of the application
-    Value: !Sub <http://$>{ALB.DNSName}
-
+    Value: !Sub http://${ALB.DNSName}
+  
   ECRRepositoryURL:
     Description: URL of the ECR repository
     Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}
-
+  
   ECSClusterName:
     Description: Name of the ECS cluster
     Value: !Ref ECSCluster
-
+  
   ECSServiceName:
     Description: Name of the ECS service
     Value: !Ref ECSService
