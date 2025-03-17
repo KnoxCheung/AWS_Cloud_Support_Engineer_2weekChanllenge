@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Day 3 Challenge</title>
+    <title>AWS 14-Day Challenge: Day 3</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
             background-color: #f4f4f4;
+            color: #333;
         }
         .container {
             max-width: 800px;
@@ -18,23 +19,40 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         h1 {
-            color: #333;
+            color: #0066cc;
+        }
+        .info {
+            background-color: #e6f7ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>14 Days AWS Challenge - Day 3</h1>
-        <p>Successfully deployed containerized application using ECS Fargate!</p>
-        <p>Container ID: <span id="container-id">Loading...</span></p>
-        <p>Timestamp: <span id="timestamp"></span></p>
+        <h1>Container Deployment Success!</h1>
+        <p>This page is being served from a container running on Amazon ECS with AWS Fargate.</p>
+
+        <div class="info">
+            <h2>Container Information:</h2>
+            <p>Container ID: <span id="container-id">Loading...</span></p>
+            <p>Deployment Time: <span id="timestamp"></span></p>
+        </div>
     </div>
+
     <script>
+        // Display current timestamp
         document.getElementById('timestamp').textContent = new Date().toISOString();
+
+        // Fetch container ID from health endpoint
         fetch('/health.html')
             .then(response => response.text())
             .then(data => {
                 document.getElementById('container-id').textContent = data.trim();
+            })
+            .catch(error => {
+                document.getElementById('container-id').textContent = "Error fetching container ID";
             });
     </script>
 </body>
