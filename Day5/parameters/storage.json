@@ -1,0 +1,11 @@
+[
+    {
+      "ParameterKey": "Environment",
+      "ParameterValue": "prod"
+    },
+    {
+      "ParameterKey": "BucketPrefix",
+      "ParameterValue": "day5-storage-demo"
+    }
+  ]
+  
